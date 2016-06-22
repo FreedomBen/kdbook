@@ -1,0 +1,158 @@
+#!/usr/bin/env ruby
+
+require 'thor'
+require 'yaml'
+require 'colorize'
+require 'kramdown'
+require 'recursive-open-struct'
+
+VERSION = '0.0.1'
+
+class KdbookBin < Thor
+  class_option :'config-file', type: :string, aliases: 'f', default: 'kdbook.yml' 
+
+  desc 'wordcount', 'Count the number of words in the book'
+  long_desc <<-LONGDESC
+    Count the number of words in the book.  If a goal is specified in
+    the project's yml file, will also print percentage complete.
+  LONGDESC
+  def wordcount
+    file_list(options).each do |inp|
+      if inp.wordcount
+        wc, file = %x(wc -w #{inp.input}).chomp.split
+        output = "Wordcount of #{file} is #{add_commas(wc)}"
+        if !inp.wordcount.is_a?(String) && inp.wordcount.min
+          output = "#{output}.  #{percentify(wc, inp.wordcount.min)}% " \
+                   "of goal #{inp.wordcount.min}"
+          output = "#{output} to #{inp.wordcount.max}" if inp.wordcount.max
+        end
+        puts output.green
+      end
+    end
+  end
+
+  desc 'version', 'Check current installed version of kdbook'
+  def version
+    puts "Kdbook - Version: #{VERSION}"
+  end
+
+  desc 'build', 'Build PDF and HTML versions of the input files'
+  long_desc <<-LONGDESC
+    If specific formats are specified in the config file, those
+    will be built.
+
+    You can optionally pass in filenames as args to build specific files
+  LONGDESC
+  def build(*files)
+    file_list(options).each do |file|
+      file.output.each do |out|
+        case out
+        when /pdf/i
+          to_pdf(file.input, output_file(file.input, out))
+        when /html/i
+          to_html(file.input, output_file(file.input, out), file.template)
+        else
+          puts "Output format '#{out}' is unsupported!".red
+        end
+      end
+    end
+  end
+
+  desc 'clean', 'Delete build artifacts'
+  def clean
+    output_file_list(options).each do |f|
+      puts "Cleaning file '#{f}'".blue
+      File.delete(f) if File.exists?(f)
+      puts "Failed to remove file '#{f}'" if File.exists?(f)
+    end
+  end
+
+  private
+
+  def file_list(options)
+    config(options)
+  end
+
+  def input_file_list(options)
+    file_list(options).map(&:input)
+  end
+
+  def output_file(input_file, out_format)
+    input_file.gsub(/md$/, out_format)
+  end
+
+  def output_files(input_file, out_formats)
+    out_formats.map{ |out| output_file(input_file, out) }
+  end
+
+  def output_file_list(options)
+    file_list(options).map{ |file| output_files(file.input, file.output) }.flatten!
+  end
+
+  def rm_hidden_comments(input)
+    input.gsub(/\/--.*?--\//m, "")
+  end
+
+  def read_file(file)
+    rm_hidden_comments(File.read(file))
+  end
+
+  def to_pdf(inp, out)
+    puts "Generating #{out}".blue
+    k = Kramdown::Document.new(read_file(inp))
+    File.write(out, k.to_pdf)
+  end
+
+  def to_html(inp, out, template = nil)
+    puts "Generating #{out}".blue
+    k = if template
+          Kramdown::Document.new(read_file(inp), template: template)
+        else
+          Kramdown::Document.new(read_file(inp))
+        end
+    File.write(out, k.to_html)
+  end
+
+  def add_commas(number)
+    number.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse
+  end
+
+  def percentify(num, den)
+    ((num.to_f / den.to_f) * 100.0).round(2)
+  end
+
+  def config_file_contents(options)
+    if File.exists?(options[:'config-file'])
+      YAML.load_file(options[:'config-file'])['kdbook']
+    else
+      # pass a straight array of filenames in the current dir name *.md
+      Dir.glob('*.md')
+    end
+  end
+
+  def upgrade_file_string(file)
+    file.is_a?(String) ? { input: file } : file
+  end
+
+  def add_missing_output(file)
+    file[:output] = %w[html pdf] unless file[:output]
+    file
+  end
+
+  def config(options)
+    config_file_contents(options)
+      .map { |f| upgrade_file_string(f) }
+      .map { |f| add_missing_output(f) }
+      .map { |f| RecursiveOpenStruct.new(f, recurse_over_arrays: true) }
+  end
+end
+
+aliases = {
+  'wc'  => 'wordcount'
+}
+
+if !ARGV.empty? && %w[-v --version].include?(ARGV.first)
+  puts "Kdbook - Version: #{VERSION}"
+else
+  KdbookBin.start(ARGV.map { |a| aliases.keys.include?(a) ? aliases[a] : a })
+end
