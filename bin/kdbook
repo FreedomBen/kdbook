@@ -6,7 +6,7 @@ require 'colorize'
 require 'kramdown'
 require 'recursive-open-struct'
 
-VERSION = '0.0.1'
+VERSION = '0.0.2'
 
 class KdbookBin < Thor
   class_option :'config-file', type: :string, aliases: 'f', default: 'kdbook.yml' 
@@ -67,7 +67,71 @@ class KdbookBin < Thor
     end
   end
 
+  desc 'gen-config', 'Write an example config file'
+  long_desc <<-LONGDESC
+    Writes an example config file to specified file or the default
+    file (kdbook.yml).  This can then be configured as desired.
+  LONGDESC
+  option :force, type: :boolean, aliases: 'f', default: false
+  def gen_config
+    if File.exists?(options[:'config-file'])
+      confirm_write(options)
+    else
+      write_default_file(options)
+    end
+  end
+
   private
+
+  def config_file_comments
+    %q(---
+      # array of: either just a string (input file), a hash
+      # with input (which is input filename), optional output
+      # formats, optional template file for HTML, optional
+      # flag to count toward word count (defaults to true if
+      # not specified).  Example entry in array:
+      #
+      # kdbook:
+      # - input: 'main-book.md'
+      #   output: ['html', 'pdf']
+      #   wordcount:
+      #     min: 60000
+      #     max: 90000
+      #).split("\n").map{|s| s.sub(' ' * 6, '')}.join("\n")
+  end
+
+  def config_file_defaults
+    {
+      'output' => ['html', 'pdf'],
+      'wordcount' => { 'min' => 60000, 'max' => 90000 }
+    }
+  end
+
+  def write_default_file(options)
+    comments = config_file_comments
+    defaults = config_file_defaults
+    glob = Dir.glob('*.md')
+    puts "Writing config file to '#{options[:'config-file']}' containing files: #{glob.join(', ')}".green
+    yaml = { 'kdbook' => glob
+      .map{ |f| { 'input' => f }
+      .merge(defaults) }}
+    File.write(
+      options[:'config-file'],
+      yaml.to_yaml.gsub('---', comments)
+    )
+  end
+
+  def confirm_write(options)
+    print "A config file already exists at #{options[':config-file']}.  Overwrite?  (Y/N): ".yellow
+    action = STDIN.gets.chomp
+    if action =~ /y/i
+      puts "Overwriting config file with new version at #{options[:'config-file']}".green
+      write_default_file(options)
+    else
+      puts "User declined.  Not writing config file".red
+      return
+    end
+  end
 
   def file_list(options)
     config(options)
