@@ -6,7 +6,7 @@ require 'colorize'
 require 'kramdown'
 require 'recursive-open-struct'
 
-VERSION = '0.0.2'
+VERSION = '0.0.3'
 
 class KdbookBin < Thor
   class_option :'config-file', type: :string, aliases: 'f', default: 'kdbook.yml' 
@@ -21,7 +21,7 @@ class KdbookBin < Thor
       if inp.wordcount
         wc, file = %x(wc -w #{inp.input}).chomp.split
         output = "Wordcount of #{file} is #{add_commas(wc)}"
-        if !inp.wordcount.is_a?(String) && inp.wordcount.min
+        if inp.wordcount.is_a?(RecursiveOpenStruct) && inp.wordcount.min
           output = "#{output}.  #{percentify(wc, inp.wordcount.min)}% " \
                    "of goal #{inp.wordcount.min}"
           output = "#{output} to #{inp.wordcount.max}" if inp.wordcount.max
