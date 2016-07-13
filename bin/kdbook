@@ -6,7 +6,7 @@ require 'colorize'
 require 'kramdown'
 require 'recursive-open-struct'
 
-VERSION = '0.0.3'
+VERSION = '0.0.4'
 
 class KdbookBin < Thor
   class_option :'config-file', type: :string, aliases: 'f', default: 'kdbook.yml' 
@@ -150,7 +150,7 @@ class KdbookBin < Thor
   end
 
   def output_file_list(options)
-    file_list(options).map{ |file| output_files(file.input, file.output) }.flatten!
+    file_list(options).map{ |file| output_files(file.input, file.output) }.flatten
   end
 
   def rm_hidden_comments(input)
