@@ -6,7 +6,7 @@ require 'colorize'
 require 'kramdown'
 require 'recursive-open-struct'
 
-VERSION = '0.0.4'
+VERSION = '0.0.5'
 
 class KdbookBin < Thor
   class_option :'config-file', type: :string, aliases: 'f', default: 'kdbook.yml' 
@@ -19,8 +19,8 @@ class KdbookBin < Thor
   def wordcount
     file_list(options).each do |inp|
       if inp.wordcount
-        wc, file = %x(wc -w #{inp.input}).chomp.split
-        output = "Wordcount of #{file} is #{add_commas(wc)}"
+        wc = rm_non_words(read_file(inp.input)).split(' ').length
+        output = "Wordcount of #{inp.input} is #{add_commas(wc)}"
         if inp.wordcount.is_a?(RecursiveOpenStruct) && inp.wordcount.min
           output = "#{output}.  #{percentify(wc, inp.wordcount.min)}% " \
                    "of goal #{inp.wordcount.min}"
@@ -155,6 +155,10 @@ class KdbookBin < Thor
 
   def rm_hidden_comments(input)
     input.gsub(/\/--.*?--\//m, "")
+  end
+
+  def rm_non_words(input)
+    input.split("\n").select { |line| !(line =~ /^\s*#/) }.join("\n")
   end
 
   def read_file(file)

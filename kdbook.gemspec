@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
   s.name        = 'kdbook'
-  s.version     = '0.0.4'
-  s.date        = '2016-07-12'
+  s.version     = '0.0.5'
+  s.date        = '2016-07-15'
   s.summary     = 'book writing in markdown made easy'
   s.description = 'book writing in markdown made easy'
   s.authors     = ['Ben Porter']
