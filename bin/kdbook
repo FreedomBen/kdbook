@@ -44,8 +44,17 @@ class KdbookBin < Thor
     You can optionally pass in filenames as args to build specific files
   LONGDESC
   def build(*files)
+    puts "BUILD REQUEST IN FOR FILES: #{files}".yellow
     file_list(options).each do |file|
       file.output.each do |out|
+        puts "files: #{files}"
+        puts "file: #{file}"
+        if build?(files, file)
+          puts 'It _IS_ a build '.blue
+        else
+          puts 'It is not a build '.blue
+        end
+        next unless build?(files, file)
         case out
         when /pdf/i
           to_pdf(file.input, output_file(file.input, out))
@@ -79,6 +88,71 @@ class KdbookBin < Thor
     else
       write_default_file(options)
     end
+  end
+
+  desc 'serve', 'Start a web serve to serve the files'
+  long_desc <<-LONGDESC
+    Starts a sinatra web server that will serve the book files on demand.
+    They will also be rebuilt on each request, unless disabled.
+  LONGDESC
+  option :port, type: :numeric, aliases: 'p', default: 4567
+  option :interface, type: :string, aliases: 'i', default: 'localhost' # or '0.0.0.0'
+  option :files, type: :array, aliases: 'f', default: []
+  option :build, type: :boolean, aliases: 'b', default: true
+  def serve
+    files = options[:files]
+    files = output_file_list(options) if files.empty?
+    interface = options[:interface]
+    port = options[:port]
+    build = options[:build]
+    do_build = method(:build)
+
+    require 'sinatra'
+
+    kdbook_server = Class.new(Sinatra::Base)
+    kdbook_server.set(:bind, interface)
+    kdbook_server.set(:port, port)
+
+    kdbook_server.get('/') do
+      # show an index with links to all the files
+      <<DOC
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>kdbook list of files</title>
+        </head>
+        <body>
+          <p><strong>kdbook list of files:</strong></p>
+          <ul>
+      #{files.map{|f| "<li><a href=\"#{f}\">#{f}</a></li>"}.join(' ') }
+          </ul>
+        </body>
+        </html>
+DOC
+    end
+
+    kdbook_server.get('/:filename') do |filename|
+      puts "Received request for file '#{filename}'".green
+      if build
+        puts "Building all files fresh before responding".green
+        do_build.call(filename)
+        puts "Done building".green
+      else
+        puts "Not building before serving cause build is disabled".yellow
+      end
+
+      if File.exist?(filename)
+        puts "File '#{filename}' found.  serving...".green
+        send_file(filename)
+      else
+        puts "File '#{filename}' not found.  Check URL and make sure files are built.  Returning 404".red
+        halt 404
+      end
+    end
+
+    puts "Starting the server on port #{options[:port]}.".green
+    kdbook_server.run!
+    puts 'Server has exited.'.green
   end
 
   private
@@ -213,10 +287,18 @@ class KdbookBin < Thor
       .map { |f| add_missing_output(f) }
       .map { |f| RecursiveOpenStruct.new(f, recurse_over_arrays: true) }
   end
+
+  def build?(files, file)
+    return true if files.empty?
+    files.include?(file.input) || files.include?(file.output) || files.any? do |f|
+      file.input.include?(f) || file.output.include?(f)
+    end
+  end
 end
 
 aliases = {
-  'wc'  => 'wordcount'
+  'wc'  => 'wordcount',
+  'server' => 'serve'
 }
 
 if !ARGV.empty? && %w[-v --version].include?(ARGV.first)

@@ -18,4 +18,6 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency 'prawn', '~> 2.0'
   s.add_runtime_dependency 'prawn-table', '~> 0.2'
   s.add_runtime_dependency 'recursive-open-struct', '~> 1.0'
+  s.add_runtime_dependency 'sinatra', '~> 1.4'
+  s.add_runtime_dependency 'thin', '~> 1.7'
 end
