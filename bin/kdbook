@@ -6,7 +6,9 @@ require 'colorize'
 require 'kramdown'
 require 'recursive-open-struct'
 
-VERSION = '0.0.5'
+VERSION = '0.1.1'
+
+DEBUG = false
 
 class KdbookBin < Thor
   class_option :'config-file', type: :string, aliases: 'f', default: 'kdbook.yml' 
@@ -44,12 +46,12 @@ class KdbookBin < Thor
     You can optionally pass in filenames as args to build specific files
   LONGDESC
   def build(*files)
-    puts "BUILD REQUEST IN FOR FILES: #{files}".yellow
+    puts "BUILD REQUEST IN FOR FILES: #{files}".yellow if DEBUG
     file_list(options).each do |file|
       file.output.each do |out|
-        puts "files: #{files}"
-        puts "file: #{file}"
-        if build?(files, file)
+        puts "files: #{files}" if DEBUG
+        puts "file: #{file}" if DEBUG
+        if DEBUG && build?(files, file)
           puts 'It _IS_ a build '.blue
         else
           puts 'It is not a build '.blue
