@@ -12,12 +12,12 @@ Gem::Specification.new do |s|
 
   s.executables << 'kdbook'
 
-  s.add_runtime_dependency 'thor', '~> 0.19'
-  s.add_runtime_dependency 'kramdown', '~> 1.6'
-  s.add_runtime_dependency 'colorize', '~> 0.7'
-  s.add_runtime_dependency 'prawn', '~> 2.0'
+  s.add_runtime_dependency 'thor', '~> 1.1'
+  s.add_runtime_dependency 'kramdown', '~> 2.3'
+  s.add_runtime_dependency 'colorize', '~> 0.8'
+  s.add_runtime_dependency 'prawn', '~> 2.4'
   s.add_runtime_dependency 'prawn-table', '~> 0.2'
-  s.add_runtime_dependency 'recursive-open-struct', '~> 1.0'
-  s.add_runtime_dependency 'sinatra', '~> 1.4'
-  s.add_runtime_dependency 'thin', '~> 1.7'
+  s.add_runtime_dependency 'recursive-open-struct', '~> 1.1'
+  s.add_runtime_dependency 'sinatra', '~> 2.1'
+  s.add_runtime_dependency 'thin', '~> 1.8'
 end
